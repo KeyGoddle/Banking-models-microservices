@@ -54,6 +54,7 @@ python run_all.py
 | `test_review.json`       | Пример, где решение — `review` |
 | `test_review_2.json`     | Ещё пример для `review`        |
 
+
 ## Запуск всех тестов
 
 ```bash
@@ -142,7 +143,7 @@ banking-models/
 
 ## Kubernetes
 - Манифесты: `k8s/manifests.yaml` (Namespace, ConfigMap, Deployments, Services).
-- Образы указаны как `ghcr.io/your/repo/...:latest` — замените на свой регистр/тег.
+- Образы  `image: python:3.11-slim` 
 - Пороги для оркестратора вынесены в `ConfigMap`.
 
 ## Jenkins
