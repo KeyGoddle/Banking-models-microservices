@@ -1,0 +1,12 @@
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/analyze" -Method POST `
+>>   -Body (Get-Content ".\tests\test_orchestrator.json" -Raw) `
+>>   -ContentType "application/json" | ConvertTo-Json -Depth 8
+
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8001/predict" -Method POST `
+>>   -Body (Get-Content ".\tests\test_model_a.json" -Raw) `
+>>   -ContentType "application/json" | ConvertTo-Json -Depth 8
+
+
+.\test_all.ps1
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass

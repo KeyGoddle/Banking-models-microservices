@@ -1,0 +1,65 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: model-orchestrate-
+spec:
+  entrypoint: run
+  arguments:
+    parameters:
+      - name: orch-url
+        value: http://orchestrator:8000/analyze  # поменяй при необходимости
+  ttlSecondsAfterFinished: 3600
+  podGC:
+    strategy: OnWorkflowSuccess
+  templates:
+    - name: run
+      inputs:
+        parameters:
+          - name: orch-url
+      retryStrategy:
+        limit: 2
+        retryPolicy: "Always"
+      activeDeadlineSeconds: 120
+      container:
+        image: curlimages/curl:8.8.0
+        command: ["sh","-c"]
+        args:
+          - |
+            set -euo pipefail
+            apk add --no-cache jq >/dev/null 2>&1 || true
+
+            cat > body.json <<'EOF'
+            {
+              "client": {
+                "age": 32,
+                "income_monthly": 180000,
+                "tenure_months": 26,
+                "has_mortgage": true,
+                "active_loans": 1,
+                "monthly_obligations": 45000,
+                "region": "RU-MOW"
+              },
+              "transactions": [
+                {"amount": 3500, "currency":"RUB", "mcc":5411, "country":"RU", "unix_ts":1723300000, "channel":"card_present"},
+                {"amount": 98000, "currency":"RUB", "mcc":6011, "country":"TR", "unix_ts":1723303600, "channel":"card_not_present"}
+              ]
+            }
+            EOF
+
+            echo "Calling: {{inputs.parameters.orch-url}}"
+            curl -sS -X POST \
+              -H 'Content-Type: application/json' \
+              --data @body.json \
+              "{{inputs.parameters.orch-url}}" \
+              | tee /tmp/result.json
+
+            # вытащим статус решения в отдельный файл
+            jq -r '.decision.status // "unknown"' /tmp/result.json > /tmp/decision.txt
+      outputs:
+        parameters:
+          - name: decision
+            valueFrom:
+              path: /tmp/decision.txt
+        artifacts:
+          - name: result-json
+            path: /tmp/result.json

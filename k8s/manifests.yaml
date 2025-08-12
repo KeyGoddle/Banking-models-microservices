@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-demo
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orchestrator-config
+  namespace: ml-demo
+data:
+  FRAUD_T_REVIEW: "0.35"
+  FRAUD_T_DECLINE: "0.7"
+  PD_MAX_FOR_APPROVE: "0.25"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-a
+  namespace: ml-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: model-a }
+  template:
+    metadata:
+      labels: { app: model-a }
+    spec:
+      containers:
+      - name: model-a
+        image: ghcr.io/your/repo/model_a:latest
+        ports: [{containerPort: 8001}]
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: "file:/data/mlruns"
+        volumeMounts:
+        - name: mlruns
+          mountPath: /data
+      volumes:
+      - name: mlruns
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-a
+  namespace: ml-demo
+spec:
+  selector: { app: model-a }
+  ports:
+  - port: 8001
+    targetPort: 8001
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-b
+  namespace: ml-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: model-b }
+  template:
+    metadata:
+      labels: { app: model-b }
+    spec:
+      containers:
+      - name: model-b
+        image: ghcr.io/your/repo/model_b:latest
+        ports: [{containerPort: 8002}]
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: "file:/data/mlruns"
+        volumeMounts:
+        - name: mlruns
+          mountPath: /data
+      volumes:
+      - name: mlruns
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-b
+  namespace: ml-demo
+spec:
+  selector: { app: model-b }
+  ports:
+  - port: 8002
+    targetPort: 8002
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: ml-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: orchestrator }
+  template:
+    metadata:
+      labels: { app: orchestrator }
+    spec:
+      containers:
+      - name: orchestrator
+        image: ghcr.io/your/repo/orchestrator:latest
+        ports: [{containerPort: 8000}]
+        env:
+        - name: MODEL_A_URL
+          value: "http://model-a:8001/predict"
+        - name: MODEL_B_URL
+          value: "http://model-b:8002/predict"
+        - name: FRAUD_T_REVIEW
+          valueFrom:
+            configMapKeyRef: { name: orchestrator-config, key: FRAUD_T_REVIEW }
+        - name: FRAUD_T_DECLINE
+          valueFrom:
+            configMapKeyRef: { name: orchestrator-config, key: FRAUD_T_DECLINE }
+        - name: PD_MAX_FOR_APPROVE
+          valueFrom:
+            configMapKeyRef: { name: orchestrator-config, key: PD_MAX_FOR_APPROVE }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: ml-demo
+spec:
+  selector: { app: orchestrator }
+  ports:
+  - port: 8000
+    targetPort: 8000

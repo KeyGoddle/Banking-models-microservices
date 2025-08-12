@@ -1,0 +1,83 @@
+services:
+  orchestrator:
+    build: ./orchestrator
+    container_name: orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_A_URL=http://model_a:8001/predict
+      - MODEL_B_URL=http://model_b:8002/predict
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC=scored_events
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - model_a
+      - model_b
+      - kafka
+      - mlflow
+
+  model_a:
+    build: ./model_a
+    container_name: model_a
+    ports:
+      - "8001:8001"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+
+  model_b:
+    build: ./model_b
+    container_name: model_b
+    ports:
+      - "8002:8002"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+
+  # Kafka (KRaft режим) + вспомогательный zookeeper-контейнер (битнами образам так проще)
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: kafka
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_ENABLE_KRAFT=yes
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.14.2
+    container_name: mlflow
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow.db
+      - MLFLOW_ARTIFACT_ROOT=/mlartifacts
+    volumes:
+      - mlflow_data:/mlartifacts
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlartifacts
+      --host 0.0.0.0
+      --port 5000
+    ports:
+      - "5000:5000"
+
+volumes:
+  mlflow_data:

@@ -1,0 +1,20 @@
+{
+  "client": {
+    "age": 45,
+    "income_monthly": 200000,
+    "tenure_months": 120,
+    "has_mortgage": false,
+    "active_loans": 0,
+    "monthly_obligations": 20000
+  },
+  "transactions": [
+    {
+      "amount": 5000,
+      "currency": "RUB",
+      "mcc": 5812,
+      "country": "RU",
+      "unix_ts": 1711000000,
+      "channel": "pos"
+    }
+  ]
+}
