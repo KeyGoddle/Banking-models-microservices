@@ -129,6 +129,8 @@ banking-models/
 
 # Интеграции под стек 
 
+MLflow, Airflow, Argo, Kubernetes и Jenkins — это дополнительные интеграции, а не обязательные для запуска
+
 ## MLflow
 - Модели (`model_a`, `model_b`) логируют метрики/параметры через `mlflow`.
 - Трекер по умолчанию `file:./mlruns` (локальные файлы). Можно переопределить `MLFLOW_TRACKING_URI`.
